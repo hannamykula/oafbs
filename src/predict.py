@@ -68,7 +68,7 @@ def get_weights(ensemble, X, y, sample_subsets):
     preds = predict_n_steps_for_ensemble(ensemble, X, sample_subsets)
     preds = pd.DataFrame(preds)
     errors = []
-    for _, col in preds.transpose().iterrows():
+    for _, col in preds.iterrows():
         error = root_mean_square_error(y.to_numpy(), col.to_numpy())
         errors.append(error)
     weights = [1/x for x in errors]
