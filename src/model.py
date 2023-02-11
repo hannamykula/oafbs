@@ -79,7 +79,8 @@ def save_validation_predictions(predictions, version):
     predictions.columns = range(1, n)
 
     experiment_dir = create_directory(EXPERIMENT_DIR)
-    filename = experiment_dir + f'\\validation_predictions_{version}.csv'
+    # filename = experiment_dir + f'\\validation_predictions_{version}.csv'
+    filename = experiment_dir + f'/validation_predictions_{version}.csv'
     predictions.to_csv(filename, encoding='utf-8', index=False)
 
 def cluster_predictions(predictions):

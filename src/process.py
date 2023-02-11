@@ -6,12 +6,16 @@ import math
 import logging
 import random
 
-DATA_DIR = '\data\\'
+# DATA_DIR = '\data\\'
+
+# def read_and_split_data(filename, test_split = 0.8, val_size = 50):
+#     file_path = sys.path[0] + DATA_DIR + filename
+#     logging.info("Loading data from {}".format(filename))
+
+DATA_DIR = '/data/'
 
 def read_and_split_data(filename, test_split = 0.8, val_size = 50):
-    file_path = sys.path[0] + DATA_DIR + filename
-    logging.info("Loading data from {}".format(filename))
-
+    file_path = '.' + DATA_DIR + filename
     dataset = pd.read_csv(file_path)
     length = len(dataset)
     test_index = math.floor(length * test_split)
