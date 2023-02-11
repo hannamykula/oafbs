@@ -20,7 +20,7 @@ def predict_one_step(model, X):
     return pred[0]
 
 # Finds corresponding subsets for model with model_index and scales it with a corresponding scaler
-def get_subset_X(X, sample_subsets, model_index):
+def get_subset_X_for_one(X, sample_subsets, model_index):
     features_index = sample_subsets[int(model_index) - 1]
     subset_X = X.iloc[features_index]
     subset_X = subset_X.values.reshape(1, -1)
@@ -30,10 +30,20 @@ def get_subset_X(X, sample_subsets, model_index):
     subset_X = scaler.transform(subset_X)
     return subset_X
 
+# Finds corresponding subsets for model with model_index and scales it with a corresponding scaler
+def get_subset_X_for_n(X, sample_subsets, model_index):
+    features_index = sample_subsets[int(model_index) - 1]
+    subset_X = X.iloc[:, features_index]
+
+    scaler_name = 'X_scaler_' + model_index + '.pkl'
+    scaler = load_model(SCALER_DIR, scaler_name)
+    subset_X = scaler.transform(subset_X)
+    return subset_X
+
 def predict_one_step_for_ensemble(model_indices, X_all, sample_subsets):
     preds = []
     for model_index in model_indices:
-        X = get_subset_X(X_all, sample_subsets, model_index)
+        X = get_subset_X_for_one(X_all, sample_subsets, model_index)
         model_name = 'model_' + model_index + '.pkl'
         model = load_model(MODEL_DIR, model_name)
         pred = predict_one_step(model, X)
@@ -43,9 +53,15 @@ def predict_one_step_for_ensemble(model_indices, X_all, sample_subsets):
 # len of X should be > 1
 def predict_n_steps_for_ensemble(model_indices, X_all, sample_subsets):
     n_steps_pred = []
-    for _, row in X_all.iterrows():
-        one_step_pred = predict_one_step_for_ensemble(model_indices, row, sample_subsets)
-        n_steps_pred.append(one_step_pred)
+    for model_index in model_indices:
+        X = get_subset_X_for_n(X_all, sample_subsets, model_index)
+        model_name = 'model_' + model_index + '.pkl'
+        model = load_model(MODEL_DIR, model_name)
+        pred = model.predict(X)
+        n_steps_pred.append(pred)
+    # for _, row in X_all.iterrows():
+        # one_step_pred = predict_one_step_for_ensemble(model_indices, row, sample_subsets)
+        # n_steps_pred.append(one_step_pred)
     return n_steps_pred
 
 def get_weights(ensemble, X, y, sample_subsets):
