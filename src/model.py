@@ -39,7 +39,7 @@ def save_model(model, model_dir, model_name, counter):
     model_location = os.path.join(model_dir, f'{model_name}_{counter}.pkl')
     joblib.dump(model, model_location)
 
-def train_candidates(train, val, target_index, sample_subsets, model):
+def train_candidates(train, val, target_index, sample_subsets, model_name):
 
     model_dir = create_directory(MODEL_DIR)
     scaler_dir = create_directory(SCALER_DIR)
@@ -63,12 +63,12 @@ def train_candidates(train, val, target_index, sample_subsets, model):
         X_val = X_scaler.transform(X_val)
         save_model(X_scaler, scaler_dir, 'X_scaler', counter)
 
-        if(model == 'CNN'):
+        if(model_name == 'CNN'):
             model = train_cnn(X_train, y_train)
-        elif(model == 'DT'):
+        elif(model_name == 'DT'):
             model = DecisionTreeRegressor(max_depth=2, random_state=0)
             model.fit(X_train, y_train)
-        # elif(model == 'VAR'):
+        # elif(model_name == 'VAR'):
             # model = VAR(pd.concat([X_train, y_train], axis = 1))
             # model.fit(1)
             # prediction = model.predict(pd.concat([X_val, y_val], axis = 1))
