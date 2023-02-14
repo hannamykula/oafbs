@@ -91,6 +91,7 @@ class DataDrift():
         if(self.difference > np.sqrt(np.log(1/self.threshold)/(2*self.sample_count))):
             self.data_drift = True
             self.min = self.min2
+            self.sample_count = 0
 
 
     def detected_change(self):

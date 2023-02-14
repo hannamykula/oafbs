@@ -18,6 +18,6 @@ TARGET_INDEX = 2
 # Size of feature subset
 SUBSET_SIZE = 0.25
 # Number of randomly selected candidates
-K = 100
+K = 10
 
-MODEL = 'CNN'
+MODEL = 'DT'
