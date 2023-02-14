@@ -1,6 +1,9 @@
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.cluster import KMeans, DBSCAN
+from sklearn.tree import DecisionTreeRegressor
+from statsmodels.tsa.api import VAR
 from sklearn.preprocessing import MinMaxScaler
+from tslearn.clustering import TimeSeriesKMeans, silhouette_score
+from tslearn.utils import to_time_series
 import numpy as np
 import pandas as pd
 import os
@@ -8,6 +11,9 @@ import joblib
 from joblib import Parallel, delayed
 from config import MODEL_DIR, EXPERIMENT_DIR, EXPERIMENT_NAME, SCALER_DIR
 import matplotlib.pyplot as plt
+from joblib import Parallel, delayed
+from keras.models import Sequential
+from keras.layers import Dense, Conv1D, Flatten, LSTM, MaxPooling1D
 
 def root_mean_square_error(y_test, y_predicted):
     return np.mean(np.square(((y_test - y_predicted) / y_test)), axis=0)
@@ -33,7 +39,7 @@ def save_model(model, model_dir, model_name, counter):
     model_location = os.path.join(model_dir, f'{model_name}_{counter}.pkl')
     joblib.dump(model, model_location)
 
-def train_candidates(train, val, target_index, sample_subsets):
+def train_candidates(train, val, target_index, sample_subsets, model):
 
     model_dir = create_directory(MODEL_DIR)
     scaler_dir = create_directory(SCALER_DIR)
@@ -57,11 +63,19 @@ def train_candidates(train, val, target_index, sample_subsets):
         X_val = X_scaler.transform(X_val)
         save_model(X_scaler, scaler_dir, 'X_scaler', counter)
 
-        model = RandomForestRegressor(max_depth=2, random_state=0)
-        model.fit(X_train, y_train)
-
+        if(model == 'CNN'):
+            model = train_cnn(X_train, y_train)
+        elif(model == 'DT'):
+            model = DecisionTreeRegressor(max_depth=2, random_state=0)
+            model.fit(X_train, y_train)
+        # elif(model == 'VAR'):
+            # model = VAR(pd.concat([X_train, y_train], axis = 1))
+            # model.fit(1)
+            # prediction = model.predict(pd.concat([X_val, y_val], axis = 1))
+        else:
+            model = None
         prediction = model.predict(X_val)
-        val_rmse = root_mean_square_error(y_val, prediction)
+        val_rmse = root_mean_square_error(y_val, prediction.flatten())
 
         print(f'Validation error for model {counter} is {val_rmse}.')
         predictions.append(prediction)
@@ -74,6 +88,16 @@ def train_candidates(train, val, target_index, sample_subsets):
 
     save_validation_predictions(val_predictions, 'init')
 
+def train_cnn(X_train, y_train):
+        model = Sequential()
+        model.add(Conv1D(64, kernel_size=1, activation='relu', input_shape=(X_train.shape[1], 1)))
+        model.add(MaxPooling1D(pool_size=1))
+        model.add(LSTM(10, ))
+        model.add(Dense(1))
+        model.compile(optimizer='adam', loss='mean_squared_error', metrics=['accuracy'])
+        model.fit(X_train, y_train, epochs=30)
+
+        return model
 def save_validation_predictions(predictions, version):
     n = len(predictions.columns) + 1
     predictions.columns = range(1, n)
@@ -83,20 +107,46 @@ def save_validation_predictions(predictions, version):
     filename = experiment_dir + f'/validation_predictions_{version}.csv'
     predictions.to_csv(filename, encoding='utf-8', index=False)
 
-def cluster_predictions(predictions):
-    
-    num_clusters=int(np.max(DBSCAN(eps=0.05,min_samples=2).fit(predictions.transpose()).labels_))+1
-    print(f'Determined number of clusters: {num_clusters}')
-    kmeans = KMeans(
-        init="random",
-        n_clusters=num_clusters,
-        n_init=10,
-        max_iter=300,
-        random_state=42
-    )
-    kmeans.fit(predictions.transpose())
+def get_avg_silhoutte(predictions, num_clusters):
+    X = to_time_series(predictions)[:, :, np.newaxis]
 
-    return kmeans.labels_, kmeans.cluster_centers_
+    # for num_clusters in num_range:
+        
+        # initialise kmeans
+    kmeans = TimeSeriesKMeans(n_clusters=num_clusters, metric="softdtw")
+    kmeans.fit(X)
+    cluster_labels = kmeans.labels_
+        
+    # silhouette score
+    return (num_clusters, silhouette_score(X, cluster_labels))
+
+# Data has to be in the shape of (num_ts, size_ts)
+def get_best_num_of_clusters(data, num_range=range(2, 15)):
+    results = Parallel(n_jobs=10)(delayed(get_avg_silhoutte)(data, i) for i in num_range)
+    avg_silhouttes = np.array(results)
+    max_avg_silhoutte = (avg_silhouttes[:, 1] == max(avg_silhouttes[:, 1]))
+
+    best_num_clusters = avg_silhouttes[max_avg_silhoutte][0][0]
+    print(f'Determined number of clusters: {best_num_clusters}')
+
+    return int(best_num_clusters)
+
+# Data has to be in the shape of (num_ts, size_ts)
+def cluster_predictions(predictions, num_clusters):
+    # num_clusters=int(np.max(DBSCAN(eps=0.05,min_samples=2).fit(predictions.transpose()).labels_))+1
+    X = to_time_series(predictions)[:, :, np.newaxis]
+    kmeans = TimeSeriesKMeans(n_clusters=num_clusters, metric="softdtw", max_iter=10)
+
+    # kmeans = KMeans(
+    #     init="random",
+    #     n_clusters=num_clusters,
+    #     n_init=10,
+    #     max_iter=300,
+    #     random_state=42
+    # )
+    kmeans.fit(X)
+
+    return kmeans.labels_, kmeans.cluster_centers_[:, :, 0]
 
 def compute_cluster_representatives(labels, cluster_centers, predictions):
     ensemble = []

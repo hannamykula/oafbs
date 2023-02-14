@@ -19,3 +19,5 @@ TARGET_INDEX = 2
 SUBSET_SIZE = 0.25
 # Number of randomly selected candidates
 K = 100
+
+MODEL = 'CNN'
