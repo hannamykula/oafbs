@@ -1,8 +1,10 @@
 import joblib
 import os
 import pandas as pd
+import numpy as np
 from config import EXPERIMENT_NAME, MODEL_DIR, SCALER_DIR
 from .model import root_mean_square_error
+from config import MODEL, TARGET_INDEX
 
 # def get_model_name(model_index):
 #     return 'model_' + model_index + '.pkl'
@@ -16,7 +18,11 @@ def load_model(model_dir, model_name):
 
 def predict_one_step(model, X):
     # model = load_model(model_index, experiment_name)
-    pred = model.predict(X)
+    if(MODEL=='VAR'):
+        pred = model.forecast(y=X[-1:], steps=1)
+        pred = pred[:, pred.shape[1] - 1]
+    else:
+        pred = model.predict(X)
     return pred[0]
 
 # Finds corresponding subsets for model with model_index and scales it with a corresponding scaler
@@ -28,6 +34,12 @@ def get_subset_X_for_one(X, sample_subsets, model_index):
     scaler_name = 'X_scaler_' + model_index + '.pkl'
     scaler = load_model(SCALER_DIR, scaler_name)
     subset_X = scaler.transform(subset_X)
+    if(MODEL == 'VAR'):
+        # subset_X = subset_X.to_numpy()
+        # subset_X = np.reshape(subset_X, (1, -1))
+        y = X.iloc[TARGET_INDEX]
+        y = np.reshape(y, (-1, 1))
+        subset_X = np.concatenate((subset_X, y), axis=1)
     return subset_X
 
 # Finds corresponding subsets for model with model_index and scales it with a corresponding scaler
@@ -38,6 +50,11 @@ def get_subset_X_for_n(X, sample_subsets, model_index):
     scaler_name = 'X_scaler_' + model_index + '.pkl'
     scaler = load_model(SCALER_DIR, scaler_name)
     subset_X = scaler.transform(subset_X)
+    if(MODEL == 'VAR'):
+        y = X.iloc[:, TARGET_INDEX]
+        y = y.to_numpy()
+        y = np.reshape(y, (-1, 1))
+        subset_X = np.concatenate((subset_X, y), axis=1)
     return subset_X
 
 def predict_one_step_for_ensemble(model_indices, X_all, sample_subsets):
@@ -57,7 +74,11 @@ def predict_n_steps_for_ensemble(model_indices, X_all, sample_subsets):
         X = get_subset_X_for_n(X_all, sample_subsets, model_index)
         model_name = 'model_' + model_index + '.pkl'
         model = load_model(MODEL_DIR, model_name)
-        pred = model.predict(X)
+        if(MODEL=='VAR'):
+            pred = model.forecast(y=X[-1:], steps=X.shape[0])
+            pred = pred[:, pred.shape[1] - 1]
+        else:
+            pred = model.predict(X)
         n_steps_pred.append(pred)
     # for _, row in X_all.iterrows():
         # one_step_pred = predict_one_step_for_ensemble(model_indices, row, sample_subsets)

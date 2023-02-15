@@ -65,16 +65,23 @@ def train_candidates(train, val, target_index, sample_subsets, model_name):
 
         if(model_name == 'CNN'):
             model = train_cnn(X_train, y_train)
+            prediction = model.predict(X_val)
         elif(model_name == 'DT'):
             model = DecisionTreeRegressor(max_depth=2, random_state=0)
             model.fit(X_train, y_train)
-        # elif(model_name == 'VAR'):
-            # model = VAR(pd.concat([X_train, y_train], axis = 1))
-            # model.fit(1)
-            # prediction = model.predict(pd.concat([X_val, y_val], axis = 1))
+            prediction = model.predict(X_val)
+        elif(model_name == 'VAR'):
+            var_y_train = y_train.to_numpy()
+            var_y_train = np.reshape(var_y_train, (-1, 1))
+            var_train = np.concatenate((X_train, var_y_train), axis=1)
+            var = VAR(var_train)
+            model = var.fit(1)
+            val_horizon = y_val.shape[0]
+            prediction = model.forecast(y=var_train[-1:], steps=val_horizon)
+            prediction = prediction[:, prediction.shape[1] - 1]
         else:
             model = None
-        prediction = model.predict(X_val)
+
         val_rmse = root_mean_square_error(y_val, prediction.flatten())
 
         print(f'Validation error for model {counter} is {val_rmse}.')
@@ -156,7 +163,8 @@ def compute_cluster_representatives(labels, cluster_centers, predictions):
         i_center = cluster_centers[i, ]
         i_data = predictions.loc[:, labels==i]
         distance_sum = np.abs(np.sum(i_data.transpose() - i_center, axis=1))
-        representative_model_index = distance_sum.idxmin()
+        if(len(distance_sum) != 0):
+            representative_model_index = distance_sum.idxmin()
         ensemble.append(representative_model_index)
     
     return ensemble
