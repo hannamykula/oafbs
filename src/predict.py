@@ -5,14 +5,18 @@ import numpy as np
 from config import EXPERIMENT_NAME, MODEL_DIR, SCALER_DIR
 from .model import root_mean_square_error
 from config import MODEL, TARGET_INDEX
+import keras
 
 # def get_model_name(model_index):
 #     return 'model_' + model_index + '.pkl'
 
-def load_model(model_dir, model_name):
+def load_model(model_dir, model_name, is_scaler):
     current_directory = os.getcwd()
     model_filename = os.path.join(current_directory, model_dir, EXPERIMENT_NAME, model_name)
-    model = joblib.load(model_filename)
+    if(MODEL=='CNN' and not is_scaler):
+        model = keras.models.load_model(model_filename)
+    else:
+        model = joblib.load(model_filename)
 
     return model
 
@@ -21,6 +25,9 @@ def predict_one_step(model, X):
     if(MODEL=='VAR'):
         pred = model.forecast(y=X[-1:], steps=1)
         pred = pred[:, pred.shape[1] - 1]
+    elif(MODEL=='CNN'):
+        pred = model.predict(X)
+        pred = pred[:, 0]
     else:
         pred = model.predict(X)
     return pred[0]
@@ -32,7 +39,7 @@ def get_subset_X_for_one(X, sample_subsets, model_index):
     subset_X = subset_X.values.reshape(1, -1)
 
     scaler_name = 'X_scaler_' + model_index + '.pkl'
-    scaler = load_model(SCALER_DIR, scaler_name)
+    scaler = load_model(SCALER_DIR, scaler_name, True)
     subset_X = scaler.transform(subset_X)
     if(MODEL == 'VAR'):
         # subset_X = subset_X.to_numpy()
@@ -48,7 +55,7 @@ def get_subset_X_for_n(X, sample_subsets, model_index):
     subset_X = X.iloc[:, features_index]
 
     scaler_name = 'X_scaler_' + model_index + '.pkl'
-    scaler = load_model(SCALER_DIR, scaler_name)
+    scaler = load_model(SCALER_DIR, scaler_name, True)
     subset_X = scaler.transform(subset_X)
     if(MODEL == 'VAR'):
         y = X.iloc[:, TARGET_INDEX]
@@ -61,8 +68,11 @@ def predict_one_step_for_ensemble(model_indices, X_all, sample_subsets):
     preds = []
     for model_index in model_indices:
         X = get_subset_X_for_one(X_all, sample_subsets, model_index)
-        model_name = 'model_' + model_index + '.pkl'
-        model = load_model(MODEL_DIR, model_name)
+        if(MODEL=='CNN'):
+            model_name = 'model_' + model_index + '.h5'
+        else:
+            model_name = 'model_' + model_index + '.pkl'
+        model = load_model(MODEL_DIR, model_name, False)
         pred = predict_one_step(model, X)
         preds.append(pred)
     return preds
@@ -72,11 +82,17 @@ def predict_n_steps_for_ensemble(model_indices, X_all, sample_subsets):
     n_steps_pred = []
     for model_index in model_indices:
         X = get_subset_X_for_n(X_all, sample_subsets, model_index)
-        model_name = 'model_' + model_index + '.pkl'
-        model = load_model(MODEL_DIR, model_name)
+        if(MODEL=='CNN'):
+            model_name = 'model_' + model_index + '.h5'
+        else:
+            model_name = 'model_' + model_index + '.pkl'
+        model = load_model(MODEL_DIR, model_name, False)
         if(MODEL=='VAR'):
             pred = model.forecast(y=X[-1:], steps=X.shape[0])
             pred = pred[:, pred.shape[1] - 1]
+        elif(MODEL=='CNN'):
+            pred = model.predict(X)
+            pred = pred[:, 0]
         else:
             pred = model.predict(X)
         n_steps_pred.append(pred)

@@ -9,7 +9,7 @@ import pandas as pd
 import os
 import joblib
 from joblib import Parallel, delayed
-from config import MODEL_DIR, EXPERIMENT_DIR, EXPERIMENT_NAME, SCALER_DIR
+from config import MODEL_DIR, EXPERIMENT_DIR, EXPERIMENT_NAME, SCALER_DIR, MODEL
 import matplotlib.pyplot as plt
 from joblib import Parallel, delayed
 from keras.models import Sequential
@@ -36,8 +36,12 @@ def create_directory(main_dir):
     return directory
 
 def save_model(model, model_dir, model_name, counter):
-    model_location = os.path.join(model_dir, f'{model_name}_{counter}.pkl')
-    joblib.dump(model, model_location)
+    if(MODEL=='CNN' and model_name!='X_scaler'):
+        model_location = os.path.join(model_dir, f'{model_name}_{counter}.h5')
+        model.save(model_location)
+    else:
+        model_location = os.path.join(model_dir, f'{model_name}_{counter}.pkl')
+        joblib.dump(model, model_location)
 
 def train_candidates(train, val, target_index, sample_subsets, model_name):
 
@@ -66,6 +70,7 @@ def train_candidates(train, val, target_index, sample_subsets, model_name):
         if(model_name == 'CNN'):
             model = train_cnn(X_train, y_train)
             prediction = model.predict(X_val)
+            prediction = prediction[:, 0]
         elif(model_name == 'DT'):
             model = DecisionTreeRegressor(max_depth=2, random_state=0)
             model.fit(X_train, y_train)
@@ -165,7 +170,7 @@ def compute_cluster_representatives(labels, cluster_centers, predictions):
         distance_sum = np.abs(np.sum(i_data.transpose() - i_center, axis=1))
         if(len(distance_sum) != 0):
             representative_model_index = distance_sum.idxmin()
-        ensemble.append(representative_model_index)
+            ensemble.append(representative_model_index)
     
     return ensemble
 

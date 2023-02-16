@@ -6,6 +6,7 @@ data/
 experiments/
 models/
 scalers/
+results/
 
 split_big_data.ipynb
 test-setup.xlsx
