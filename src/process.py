@@ -7,12 +7,12 @@ import logging
 import random
 
 
-# DATA_DIR = '/data/'
+DATA_DIR = '/data/'
 
 # def read_and_split_data(filename, test_split = 0.8, val_size = 50):
 #     file_path = '.' + DATA_DIR + filename
 
-DATA_DIR = '\data\\'
+# DATA_DIR = '\data\\'
 
 def read_and_split_data(filename, test_split = 0.8, val_size = 50):
     file_path = sys.path[0] + DATA_DIR + filename
