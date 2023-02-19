@@ -14,10 +14,21 @@ DATA_DIR = '/data/'
 
 # DATA_DIR = '\data\\'
 
-def read_and_split_data(filename, test_split = 0.8, val_size = 50):
+def read_and_split_data(filename, target_index, test_split = 0.8, val_size = 50):
     file_path = sys.path[0] + DATA_DIR + filename
     # logging.info("Loading data from {}".format(filename))
     dataset = pd.read_csv(file_path)
+    # dataset = dataset.drop(['Date', 'Name'], axis=1)
+    # dataset = dataset.dropna()
+
+    # ran = list(range(target_index)) + list(range(target_index + 1, len(dataset.columns)))
+    # print(ran)
+    # sub = random.sample(ran, 30)
+    # sub.insert(0, target_index)
+    # sub.sort()
+    # print(sub)
+    # dataset = dataset.iloc[:, sub]
+
     length = len(dataset)
     test_index = math.floor(length * test_split)
     val_index = test_index - val_size
